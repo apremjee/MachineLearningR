@@ -1,0 +1,235 @@
+## Machine Learning in R
+
+We the Iris data set, which is very well-known in the area of machine learning. This dataset is built into R, so you can take a look at this dataset by typing the following into your console:
+
+```{r}
+iris
+```
+
+Alternatively this data set can be downloaded from the UCI repository as follows
+
+```{r}
+# Read in `iris` data
+iris <- read.csv(url("http://archive.ics.uci.edu/ml/machine-learning-databases/iris/iris.data"), 
+                 header = FALSE) 
+
+# Print first lines
+head(iris)
+```
+We see that the data is missing the column names. These can be inserted as follows
+
+```{r}
+# Add column names
+names(iris) <- c("Sepal.Length", "Sepal.Width", "Petal.Length", "Petal.Width", "Species")
+
+# Check the result
+head(iris)
+```
+
+
+
+```{r}
+# Load in `ggvis`
+
+library(ggvis)
+library(caret)
+library(class)
+library(gmodels)
+```
+
+```{r}
+# Iris scatter plot
+iris %>% ggvis(~Sepal.Length, ~Sepal.Width, fill = ~Species) %>% layer_points()
+```
+
+```{r}
+iris %>% ggvis(~Petal.Length, ~Petal.Width, fill = ~Species) %>% layer_points()
+```
+
+You see that this graph indicates a positive correlation between the petal length and the petal width for all different species that are included into the Iris data set. Of course, you probably need to test this hypothesis a bit further if you want to be really sure of this:
+
+
+```{r}
+ unique(iris$Species)
+```
+
+
+
+```{r}
+# Overall correlation `Petal.Length` and `Petal.Width`
+cor(iris$Petal.Length, iris$Petal.Width)
+
+# Return values of `iris` levels 
+#x=levels(iris$Species)
+x = unique(iris$Species)
+
+# Print Setosa correlation matrix
+print(x[1])
+cor(iris[iris$Species==x[1],1:4])
+
+# Print Versicolor correlation matrix
+print(x[2])
+cor(iris[iris$Species==x[2],1:4])
+
+# Print Virginica correlation matrix
+print(x[3])
+cor(iris[iris$Species==x[3],1:4])
+```
+
+```{r}
+# Division of `Species`
+table(iris$Species) 
+
+# Percentual division of `Species`
+round(prop.table(table(iris$Species)) * 100, digits = 1)
+```
+
+```{r}
+# Summary overview of `iris`
+summary(iris) 
+
+# Refined summary overview
+summary(iris[c("Petal.Width", "Sepal.Width")])
+```
+Normalization
+As a part of your data preparation, you might need to normalize your data so that its consistent. For this introductory tutorial, just remember that normalization makes it easier for the KNN algorithm to learn. There are two types of normalization:
+
+example normalization is the adjustment of each example individually, while
+feature normalization indicates that you adjust each feature in the same way across all examples.
+
+So when do you need to normalize your dataset?
+
+In short: when you suspect that the data is not consistent.
+
+You can easily see this when you go through the results of the summary() function. Look at the minimum and maximum values of all the (numerical) attributes. If you see that one attribute has a wide range of values, you will need to normalize your dataset, because this means that the distance will be dominated by this feature.
+
+For example, if your dataset has just two attributes, X and Y, and X has values that range from 1 to 1000, while Y has values that only go from 1 to 100, then Y’s influence on the distance function will usually be overpowered by X’s influence.
+
+When you normalize, you actually adjust the range of all features, so that distances between variables with larger ranges will not be over-emphasised.
+
+
+Tip: go back to the result of summary(iris) and try to figure out if normalization is necessary.
+
+The Iris data set doesn’t need to be normalized: the Sepal.Length attribute has values that go from 4.3 to 7.9 and Sepal.Width contains values from 2 to 4.4, while Petal.Length’s values range from 1 to 6.9 and Petal.Width goes from 0.1 to 2.5. All values of all attributes are contained within the range of 0.1 and 7.9, which you can consider acceptable.
+
+Nevertheless, it’s still a good idea to study normalization and its effect, especially if you’re new to machine learning. You can perform feature normalization, for example, by first making your own normalize() function.
+
+You can then use this argument in another command, where you put the results of the normalization in a data frame through as.data.frame() after the function lapply() returns a list of the same length as the data set that you give in. Each element of that list is the result of the application of the normalize argument to the data set that served as input:
+
+```{r}
+# Build your own `normalize()` function
+normalize <- function(x) {
+num <- x - min(x)
+denom <- max(x) - min(x)
+return (num/denom)
+}
+
+# Normalize the `iris` data
+iris_norm <- as.data.frame(lapply(iris[1:4], normalize))
+
+# Summarize `iris_norm`
+summary(iris_norm)
+```
+
+Training And Test Sets
+In order to assess your model’s performance later, you will need to divide the data set into two parts: a training set and a test set.
+
+The first is used to train the system, while the second is used to evaluate the learned or trained system. In practice, the division of your data set into a test and a training sets is disjoint: the most common splitting choice is to take 2/3 of your original data set as the training set, while the 1/3 that remains will compose the test set.
+
+One last look on the data set teaches you that if you performed the division of both sets on the data set as is, you would get a training class with all species of “Setosa” and “Versicolor”, but none of “Virginica”. The model would therefore classify all unknown instances as either “Setosa” or “Versicolor”, as it would not be aware of the presence of a third species of flowers in the data.
+
+In short, you would get incorrect predictions for the test set.
+
+You thus need to make sure that all three classes of species are present in the training model. What’s more, the amount of instances of all three species needs to be more or less equal so that you do not favour one or the other class in your predictions.
+
+To make your training and test sets, you first set a seed. This is a number of R’s random number generator. The major advantage of setting a seed is that you can get the same sequence of random numbers whenever you supply the same seed in the random number generator.
+
+```{r}
+set.seed(1964)
+ind <- sample(2, nrow(iris), replace=TRUE, prob=c(0.67, 0.33))
+ind
+```
+
+```{r}
+# Compose training set
+iris.training <- iris[ind==1, 1:4]
+
+# Inspect training set
+head(iris.training)
+
+# Compose test set
+iris.test <- iris[ind==2, 1:4]
+
+# Inspect test set
+head(iris.test)
+```
+```{r}
+# Compose `iris` training labels
+iris.trainLabels <- iris[ind==1,5]
+
+# Inspect result
+print(iris.trainLabels)
+
+# Compose `iris` test labels
+iris.testLabels <- iris[ind==2, 5]
+
+# Inspect result
+print(iris.testLabels)
+```
+```{r}
+head(iris.test)
+```
+
+
+### The Actual KNN Model
+##### Building Your Classifier
+After all these preparation steps, you have made sure that all your known (training) data is stored. No actual model or learning was performed up until this moment. Now, you want to find the k nearest neighbors of your training set.
+
+An easy way to do these two steps is by using the knn() function, which uses the Euclidian distance measure in order to find the k-nearest neighbours to your new, unknown instance. Here, the k parameter is one that you set yourself.
+
+As mentioned before, new instances are classified by looking at the majority vote or weighted vote. In case of classification, the data point with the highest score wins the battle and the unknown instance receives the label of that winning data point. If there is an equal amount of winners, the classification happens randomly.
+
+Note: the k parameter is often an odd number to avoid ties in the voting scores.
+
+To build your classifier, you need to take the knn() function and simply add some arguments to it, just like in this example:
+
+```{r}
+# Build the model
+iris_pred <- knn(train = iris.training, test = iris.test, cl = iris.trainLabels, k=3)
+
+# Inspect `iris_pred`
+iris_pred
+```
+
+We store into iris_pred the knn() function that takes as arguments the training set, the test set, the train labels and the amount of neighbours you want to find with this algorithm. The result of this function is a factor vector with the predicted classes for each row of the test data.
+
+Note that you don’t want to insert the test labels: these will be used to see if your model is good at predicting the actual classes of your instances!
+
+You see that when you inspect the the result, iris_pred, you’ll get back the factor vector with the predicted classes for each row of the test data.
+
+### Evaluation of Your Model
+An essential next step in machine learning is the evaluation of your model’s performance. In other words, you want to analyze the degree of correctness of the model’s predictions.
+
+```{r}
+# Put `iris.testLabels` in a data frame
+irisTestLabels <- data.frame(iris.testLabels)
+
+# Merge `iris_pred` and `iris.testLabels` 
+merge <- data.frame(iris_pred, irisTestLabels)
+
+# Specify column names for `merge`
+names(merge) <- c("Predicted Species", "Observed Species")
+
+# Inspect `merge` 
+merge
+```
+
+Then you can make a cross tabulation or a contingency table. This type of table is often used to understand the relationship between two variables. In this case, you want to understand how the classes of your test data, stored in iris.testLabels relate to your model that is stored in iris_pred
+
+```{r}
+CrossTable(x = iris.testLabels, y = iris_pred, prop.chisq=FALSE)
+```
+From this table, you can derive the number of correct and incorrect predictions: one instance from the testing set was labeled Versicolor by the model, while it was actually a flower of species Virginica. You can see this in the first row of the “Virginica” species in the iris.testLabels column. In all other cases, correct predictions were made. You can conclude that the model’s performance is good enough and that you don’t need to improve the model!
+
+
+

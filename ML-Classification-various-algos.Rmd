@@ -1,0 +1,150 @@
+---
+title: "ML-Classification-various-algos"
+author: "Aqueel Premjee"
+date: "6/17/2021"
+output: html_document
+---
+
+```{r}
+library(caret)
+library(ggplot2)
+library(randomForest)
+library(nnet)
+library(e1071)
+library(rpart)
+library(dplyr)
+```
+
+```{r}
+Data<- read.csv("https://raw.githubusercontent.com/hanieljacob/Gender-Classification/master/GenderClassification.csv",stringsAsFactors = TRUE)
+```
+
+```{r}
+set.seed(10)
+```
+
+
+```{r}
+head(Data)
+```
+
+```{r}
+Data$Favorite.Color <- as.numeric(Data$Favorite.Color)
+Data$Favorite.Music.Genre <- as.numeric(Data$Favorite.Music.Genre)
+Data$Favorite.Beverage <- as.numeric(Data$Favorite.Beverage)
+Data$Favorite.Soft.Drink <- as.numeric(Data$Favorite.Soft.Drink)
+```
+
+```{r}
+head(Data)
+```
+
+
+```{r}
+TrainingSize <- createDataPartition(Data$Gender, p=0.8, list=FALSE)
+TrainingData <- Data[TrainingSize,]
+TestingData <- Data[-TrainingSize,]
+```
+
+```{r}
+str(TrainingData)
+```
+```{r}
+str(TestingData)
+```
+
+### using dplyr
+
+```{r}
+Data %>% 
+  filter( Gender == "M")
+```
+
+### Using ggplot2
+```{r}
+ggplot(Data, aes(Favorite.Color)) +
+  geom_bar(fill = "#0073C2FF") 
+```
+
+
+
+#using randomForest
+```{r}
+model <- randomForest(formula = Gender ~ ., data = Data)
+print(model)
+```
+The thing on the right of <- is a formula object. It is often used to denote a statistical model, where the thing on the left of the ~ is the response and the things on the right of the ~ are the explanatory variables. above, gender depend on data
+
+
+
+###using nnet (Neural network)
+```{r}
+model <- nnet(formula = Gender ~ ., data = Data, size = 30)
+print(model)
+```
+
+### using e1071
+```{r}
+model <- svm(formula = Gender ~ ., data = Data)
+print(model)
+```
+
+### using rpart
+
+```{r}
+partition <- rpart(formula = Gender~., data=Data)
+plot(partition)
+```
+
+### using caret
+
+```{r}
+model <- train(Gender ~ ., data= TrainingData,
+               method = "svmPoly",
+               na.action = na.omit,
+               preProcess = c("scale","center"),
+               trControl = trainControl(method="none"),
+               tuneGrid = data.frame(degree=1,scale=1,C=1)
+)
+model.cv <- train(Gender ~ ., data= TrainingData,
+               method = "svmPoly",
+               na.action = na.omit,
+               preProcess = c("scale","center"),
+               trControl = trainControl(method="cv", number=6),
+               tuneGrid = data.frame(degree=1,scale=1,C=1)
+)
+print(model)
+```
+```{r}
+print(model.cv)
+```
+```{r}
+model.train <- predict(model,TrainingData)
+model.test <- predict(model,TestingData)
+model.cv <- predict(model.cv,TrainingData)
+```
+
+```{r}
+model.train.confusion <- confusionMatrix(model.train, TrainingData$Gender)
+model.test.confusion <- confusionMatrix(model.test, TestingData$Gender)
+model.cv.confusion <- confusionMatrix(model.cv, TrainingData$Gender)
+```
+
+```{r}
+print(model.train.confusion)
+```
+```{r}
+print(model.test.confusion)
+```
+```{r}
+print(model.cv.confusion)
+```
+```{r}
+importance <- varImp(model)
+plot(importance)
+plot(importance, col = "red")
+```
+
+
+
+
