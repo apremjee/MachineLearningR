@@ -1,0 +1,99 @@
+---
+title: "Machine Learning with R"
+author: "Aqueel Premjee"
+date: "6/16/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Importing libraries
+library(datasets) # Contains the Iris data set
+
+```{r}
+# Importing libraries
+library(datasets) # Contains the Iris data set
+
+library(caret) # Package for machine learning algorithms / CARET stands for Classification  # and REgression Training
+```
+
+
+```{r}
+# Importing the Iris data set
+data(iris)
+```
+
+
+```{r}
+# Check to see if there are missing data?
+sum(is.na(iris))
+```
+
+
+```{r}
+# To achieve reproducible model; set the random seed number
+set.seed(100)
+
+# Performs stratified random split of the data set
+TrainingIndex <- createDataPartition(iris$Species, p=0.8, list = FALSE)
+TrainingSet <- iris[TrainingIndex,] # Training Set
+TestingSet <- iris[-TrainingIndex,] # Test Set
+```
+
+# Compare scatter plot of the 80 and 20 data subsets
+Training
+
+plot(x = iris$wt,y = input$mpg,
+   xlab = "Weight",
+   ylab = "Milage",
+   xlim = c(2.5,5),
+   ylim = c(15,30),		 
+   main = "Weight vs Milage"
+)
+
+# Save the file.
+dev.off()
+
+
+###############################
+# SVM model (polynomial kernel)
+
+# Build Training model
+Model <- train(Species ~ ., data = TrainingSet,
+               method = "svmPoly",
+               na.action = na.omit,
+               preProcess=c("scale","center"),
+               trControl= trainControl(method="none"),
+               tuneGrid = data.frame(degree=1,scale=1,C=1)
+)
+
+# Build CV model
+Model.cv <- train(Species ~ ., data = TrainingSet,
+                  method = "svmPoly",
+                  na.action = na.omit,
+                  preProcess=c("scale","center"),
+                  trControl= trainControl(method="cv", number=10),
+                  tuneGrid = data.frame(degree=1,scale=1,C=1)
+)
+
+
+# Apply model for prediction
+Model.training <-predict(Model, TrainingSet) # Apply model to make prediction on Training set
+Model.testing <-predict(Model, TestingSet) # Apply model to make prediction on Testing set
+Model.cv <-predict(Model.cv, TrainingSet) # Perform cross-validation
+
+# Model performance (Displays confusion matrix and statistics)
+Model.training.confusion <-confusionMatrix(Model.training, TrainingSet$Species)
+Model.testing.confusion <-confusionMatrix(Model.testing, TestingSet$Species)
+Model.cv.confusion <-confusionMatrix(Model.cv, TrainingSet$Species)
+
+print(Model.training.confusion)
+print(Model.testing.confusion)
+print(Model.cv.confusion)
+
+# Feature importance
+Importance <- varImp(Model)
+plot(Importance)
+plot(Importance, col = "red")
